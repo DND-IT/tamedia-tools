@@ -1,0 +1,53 @@
+name: Update Badges
+
+on:
+  workflow_run:
+    workflows: ["Test", "Release"]
+    types: [completed]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+
+jobs:
+  update-readme-badges:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get latest release version
+        id: release
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r '.tag_name // "v0.0.0"')
+          echo "version=${LATEST_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Update README badges
+        run: |
+          # Create badges section if it doesn't exist
+          if ! grep -q "<!-- BADGES START -->" README.md; then
+            # Add badges after the main title
+            sed -i '1a\\n<!-- BADGES START -->\n![Tests](https://github.com/${{ github.repository }}/workflows/Test/badge.svg)\n![Release](https://github.com/${{ github.repository }}/workflows/Release/badge.svg)\n![Version](https://img.shields.io/github/v/release/${{ github.repository }})\n![License](https://img.shields.io/github/license/${{ github.repository }})\n<!-- BADGES END -->\n' README.md
+          else
+            # Update existing badges
+            sed -i '/<!-- BADGES START -->/,/<!-- BADGES END -->/c\<!-- BADGES START -->\n![Tests](https://github.com/${{ github.repository }}/workflows/Test/badge.svg)\n![Release](https://github.com/${{ github.repository }}/workflows/Release/badge.svg)\n![Version](https://img.shields.io/github/v/release/${{ github.repository }})\n![License](https://img.shields.io/github/license/${{ github.repository }})\n<!-- BADGES END -->' README.md
+          fi
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet README.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "docs: update README badges"
+          title: "Update README badges"
+          body: |
+            Automated update of README badges to reflect current build status.
+          branch: update-badges
+          delete-branch: true

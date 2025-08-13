@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.tar.gz
+*.zip
+SHA256SUMS.txt
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Test coverage
+coverage/
+*.coverage
+
+# Local environment
+.env
+.env.local

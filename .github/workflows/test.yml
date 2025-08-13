@@ -1,0 +1,105 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './tools ./scripts'
+          severity: warning
+
+  test-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Test common.sh
+        run: |
+          source scripts/common.sh
+          
+          # Test version function
+          print_version
+          
+          # Test color functions
+          print_info "Testing info message"
+          print_success "Testing success message"
+          print_warning "Testing warning message"
+          
+          # Test command_exists
+          command_exists bash && echo "bash exists" || echo "bash not found"
+          command_exists nonexistent && echo "should not print" || echo "nonexistent not found"
+
+      - name: Test tunnel.sh help
+        run: |
+          chmod +x tools/tunnel/tunnel.sh
+          tools/tunnel/tunnel.sh --help
+          tools/tunnel/tunnel.sh --version
+
+      - name: Test build script
+        run: |
+          chmod +x scripts/build-release.sh
+          # Test build process without actually creating release
+          cd /tmp
+          git clone ${{ github.server_url }}/${{ github.repository }} test-repo
+          cd test-repo
+          ./scripts/build-release.sh
+          
+          # Verify tarball was created
+          ls -la tamedia-tools-v*.tar.gz
+
+  test-homebrew-formulas:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test Homebrew formulas syntax
+        run: |
+          # Test that formulas are valid Ruby
+          for formula in Formula/*.rb; do
+            echo "Testing $formula..."
+            ruby -c "$formula"
+          done
+
+  test-installation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          chmod +x tools/*/**.sh
+
+      - name: Test direct installation (dry run)
+        run: |
+          # Modify install script for dry run
+          sed -i 's/sudo install/echo "Would install"/g' scripts/install.sh
+          
+          # Test installation with local files
+          mkdir -p /tmp/test-install
+          cp -r . /tmp/test-install/tamedia-tools-v1.0.0
+          cd /tmp/test-install
+          tar -czf tamedia-tools-v1.0.0.tar.gz tamedia-tools-v1.0.0
+          
+          # Mock the download function to use local file
+          export TEST_MODE=1
+          echo "Testing installation..."

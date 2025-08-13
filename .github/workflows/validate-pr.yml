@@ -1,0 +1,72 @@
+name: Validate PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check file permissions
+        run: |
+          # Ensure all shell scripts are executable
+          find . -name "*.sh" -type f | while read -r script; do
+            if [[ ! -x "$script" ]]; then
+              echo "Error: $script is not executable"
+              exit 1
+            fi
+          done
+
+      - name: Validate version consistency
+        run: |
+          # Extract version from common.sh
+          VERSION=$(grep 'TAMEDIA_TOOLS_VERSION=' scripts/common.sh | cut -d'"' -f2)
+          echo "Version in common.sh: $VERSION"
+          
+          # Check that all formulas have consistent version
+          for formula in Formula/*.rb; do
+            FORMULA_VERSION=$(grep 'version "' "$formula" | cut -d'"' -f2 || echo "PLACEHOLDER")
+            if [[ "$FORMULA_VERSION" != "$VERSION" ]] && [[ "$FORMULA_VERSION" != "PLACEHOLDER" ]]; then
+              echo "Error: Version mismatch in $formula (expected $VERSION, got $FORMULA_VERSION)"
+              exit 1
+            fi
+          done
+
+      - name: Check for secrets
+        run: |
+          # Basic check for potential secrets
+          if grep -r -E "(password|secret|key|token).*=.*['\"].*['\"]" --include="*.sh" .; then
+            echo "Warning: Potential hardcoded secrets found"
+            exit 1
+          fi
+
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check documentation
+        run: |
+          # Ensure all tools have README files
+          for tool_dir in tools/*/; do
+            if [[ ! -f "$tool_dir/README.md" ]]; then
+              echo "Warning: Missing README.md in $tool_dir"
+            fi
+          done
+          
+          # Check for broken links in markdown files
+          find . -name "*.md" -type f | while read -r file; do
+            echo "Checking links in $file..."
+            # Basic check for relative links
+            grep -o '\[.*\]([^)]*\.md)' "$file" | while read -r link; do
+              link_path=$(echo "$link" | sed 's/.*](\(.*\))/\1/')
+              if [[ ! -f "$(dirname "$file")/$link_path" ]] && [[ ! -f "$link_path" ]]; then
+                echo "Warning: Broken link to $link_path in $file"
+              fi
+            done
+          done
