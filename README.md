@@ -1,5 +1,13 @@
 # Tamedia Tools
 
+<!-- BADGES START -->
+![Tests](https://github.com/DND-IT/tamedia-tools/workflows/Test/badge.svg)
+![Release](https://github.com/DND-IT/tamedia-tools/workflows/Release/badge.svg)
+![Version](https://img.shields.io/github/v/release/DND-IT/tamedia-tools)
+![License](https://img.shields.io/github/license/DND-IT/tamedia-tools)
+<!-- BADGES END -->
+
+
 AWS service tunneling tool for Kubernetes, designed for Tamedia's infrastructure workflows. This tool simplifies secure connections to AWS managed services through Kubernetes pods.
 
 ## 🚀 Quick Start
