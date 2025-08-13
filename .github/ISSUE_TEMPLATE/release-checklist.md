@@ -18,16 +18,17 @@ assignees: ''
 ## Release Process
 
 - [ ] Create and push version tag: `git tag v[VERSION] && git push origin v[VERSION]`
-- [ ] Wait for GitHub Actions to create release
-- [ ] Verify release artifacts uploaded correctly
+- [ ] Wait for GitHub Actions to create release automatically
+- [ ] Verify release artifacts uploaded correctly:
+  - [ ] `tamedia-tools-v[VERSION].tar.gz`
+  - [ ] `SHA256SUMS.txt`
 - [ ] Test installation methods:
-  - [ ] Direct installation: `curl -sSL .../install.sh | bash`
-  - [ ] Homebrew installation (after tap update)
+  - [ ] Direct installation: `curl -sSL https://raw.githubusercontent.com/dnd-it/tamedia-tools/main/scripts/install.sh | bash`
+  - [ ] Homebrew installation: `brew tap dnd-it/tamedia-tools && brew install tamedia-tools`
 
 ## Post-release
 
-- [ ] Verify Homebrew tap PR created
-- [ ] Merge Homebrew tap PR
+- [ ] Verify Homebrew tap PR created and merged
 - [ ] Test Homebrew installation: `brew tap dnd-it/tamedia-tools && brew install tamedia-tools`
 - [ ] Update internal documentation
 - [ ] Announce release in team channels

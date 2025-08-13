@@ -4,27 +4,34 @@ AWS service tunneling tool for Kubernetes, designed for Tamedia's infrastructure
 
 ## 🚀 Quick Start
 
-### Homebrew Installation (Recommended)
+### Installation
 
+#### Homebrew (Recommended)
 ```bash
 # Add the tap
 brew tap dnd-it/tamedia-tools
 
-# Install complete suite
+# Install the tools
 brew install tamedia-tools
-
-# Or install individual tool
+# Or install just the tunnel tool
 brew install tamedia-tunnel
 ```
 
-### Direct Installation
-
+#### Direct Installation
 ```bash
-# Install all tools
 curl -sSL https://raw.githubusercontent.com/dnd-it/tamedia-tools/main/scripts/install.sh | bash
+```
 
-# Install specific tool
-curl -sSL https://raw.githubusercontent.com/dnd-it/tamedia-tools/main/scripts/install.sh | bash -s tunnel
+#### Manual Installation
+```bash
+# Download the latest release
+wget https://github.com/dnd-it/tamedia-tools/archive/v1.0.0.tar.gz
+tar -xzf v1.0.0.tar.gz
+cd tamedia-tools-1.0.0
+
+# Install to /usr/local/bin
+sudo install -m 755 tools/tunnel/tunnel.sh /usr/local/bin/tamedia-tunnel
+sudo install -m 755 scripts/common.sh /usr/local/bin/tamedia-common
 ```
 
 ## 🛠️ Features
@@ -60,9 +67,7 @@ tamedia-tunnel
 
 ## 📖 Documentation
 
-- [Installation Guide](docs/installation.md)
 - [Tunnel Tool Guide](tools/tunnel/README.md)
-- [Contributing](docs/contributing.md)
 
 ## 🤝 Contributing
 

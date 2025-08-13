@@ -9,124 +9,91 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
+  release:
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      version: ${{ steps.get_version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Get version
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get_version.outputs.version }}
-          body: |
-            ## Changes in this Release
-            
-            ### Features
-            - AWS service tunneling through Kubernetes
-            - Interactive service and instance selection
-            - Automatic AWS Secrets Manager integration
-            - Smart port management
-            
-            ### Installation
-            
-            #### Homebrew
-            ```bash
-            brew tap dnd-it/tamedia-tools
-            brew install tamedia-tools
-            ```
-            
-            #### Direct Installation
-            ```bash
-            curl -sSL https://raw.githubusercontent.com/dnd-it/tamedia-tools/main/scripts/install.sh | bash
-            ```
-            
-            ### Tools Included
-            - `tamedia-tunnel` - AWS service tunneling through Kubernetes
-          draft: false
-          prerelease: false
-
-  build-and-upload:
-    needs: create-release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build release tarball
+        id: version
         run: |
-          VERSION="${{ needs.create-release.outputs.version }}"
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_num=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Build release artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
           RELEASE_DIR="tamedia-tools-${VERSION}"
-          
+
           # Create release directory
           mkdir -p "${RELEASE_DIR}"
-          
-          # Copy all necessary files
-          cp -r tools scripts Formula completion docs README.md LICENSE "${RELEASE_DIR}/"
-          
+
+          # Copy essential files
+          cp -r tools scripts completion README.md LICENSE "${RELEASE_DIR}/"
+
           # Create tarball
           tar -czf "${RELEASE_DIR}.tar.gz" "${RELEASE_DIR}"
-          
+
           # Calculate SHA256
           SHA256=$(shasum -a 256 "${RELEASE_DIR}.tar.gz" | awk '{print $1}')
           echo "SHA256=${SHA256}" >> $GITHUB_ENV
           echo "TARBALL=${RELEASE_DIR}.tar.gz" >> $GITHUB_ENV
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Generate SHA256 file
+          echo "${SHA256}  ${RELEASE_DIR}.tar.gz" > SHA256SUMS.txt
+
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./${{ env.TARBALL }}
-          asset_name: ${{ env.TARBALL }}
-          asset_content_type: application/gzip
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## tamedia-tools ${{ steps.version.outputs.version }}
 
-      - name: Update Homebrew Formula
-        run: |
-          VERSION="${{ needs.create-release.outputs.version }}"
-          
-          # Update formula files with actual SHA256
-          for formula in Formula/*.rb; do
-            sed -i "s/PLACEHOLDER_SHA256/${SHA256}/g" "$formula"
-            sed -i "s|archive/v[0-9.]*\.tar\.gz|archive/${VERSION}.tar.gz|g" "$formula"
-            sed -i "s|version \"[0-9.]*\"|version \"${VERSION#v}\"|g" "$formula"
-          done
-          
-          # Create formula artifact for homebrew tap
-          tar -czf homebrew-formulas.tar.gz Formula/
+            AWS service tunneling tool for Kubernetes, designed for Tamedia's infrastructure workflows.
 
-      - name: Upload Homebrew Formulas
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./homebrew-formulas.tar.gz
-          asset_name: homebrew-formulas.tar.gz
-          asset_content_type: application/gzip
+            ### ✨ Features
+            - **Secure tunneling** to AWS services through Kubernetes pods
+            - **Interactive selection** for DocumentDB, RDS (PostgreSQL/MySQL), ElastiCache (Redis/Valkey)
+            - **Automatic credentials** integration with AWS Secrets Manager
+            - **Smart port management** with automatic port conflict resolution
+            - **Enhanced secret discovery** with fzf fuzzy finding support
+            - **Clean exit handling** with automatic resource cleanup prompts
 
-      - name: Generate SHA256 File
-        run: |
-          echo "${SHA256}  ${{ env.TARBALL }}" > SHA256SUMS.txt
+            ### 📦 Installation
 
-      - name: Upload SHA256 File
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./SHA256SUMS.txt
-          asset_name: SHA256SUMS.txt
-          asset_content_type: text/plain
+            #### Homebrew (recommended)
+            ```bash
+            brew tap dnd-it/tamedia-tools
+            brew install tamedia-tools
+            ```
+
+            #### Direct installation
+            ```bash
+            curl -sSL https://raw.githubusercontent.com/dnd-it/tamedia-tools/main/scripts/install.sh | bash
+            ```
+
+            ### 📋 Requirements
+            - AWS CLI configured with appropriate permissions
+            - kubectl configured for your Kubernetes cluster
+            - jq for JSON processing
+            - fzf (optional, for enhanced secret search)
+
+            ### 🚀 Quick Start
+            After installation, run:
+            ```bash
+            tamedia-tunnel
+            ```
+
+            The tool will guide you through service selection, instance selection, and automatic tunnel setup.
+
+            ---
+
+            **Full Changelog**: https://github.com/dnd-it/tamedia-tools/compare/v0.0.0...${{ steps.version.outputs.version }}
+          files: |
+            ${{ env.TARBALL }}
+            SHA256SUMS.txt
+          draft: false
+          prerelease: false
