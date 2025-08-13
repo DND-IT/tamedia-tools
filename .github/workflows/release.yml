@@ -91,6 +91,12 @@ jobs:
 
             ---
 
+            ### 🔄 Update Homebrew Tap
+            After this release, update the Homebrew tap:
+            1. Go to https://github.com/dnd-it/homebrew-tamedia-tools
+            2. Update formulas with SHA256: `${{ env.SHA256 }}`
+            3. Update version to: `${{ steps.version.outputs.version_num }}`
+            
             **Full Changelog**: https://github.com/dnd-it/tamedia-tools/compare/v0.0.0...${{ steps.version.outputs.version }}
           files: |
             ${{ env.TARBALL }}
