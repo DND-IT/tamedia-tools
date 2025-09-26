@@ -9,10 +9,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TOOLS_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# Try multiple paths for common.sh
 if [[ -f "$TOOLS_ROOT/scripts/common.sh" ]]; then
+    # Development/repository structure
     source "$TOOLS_ROOT/scripts/common.sh"
+elif [[ -f "$SCRIPT_DIR/tamedia-common" ]]; then
+    # Homebrew installation (same directory as binary)
+    source "$SCRIPT_DIR/tamedia-common"
+elif command -v tamedia-common >/dev/null 2>&1; then
+    # Global installation, tamedia-common is in PATH
+    source "$(which tamedia-common)"
 else
-    echo "Error: Cannot find common.sh" >&2
+    echo "Error: Cannot find common.sh or tamedia-common" >&2
+    echo "Please ensure tamedia-tools is properly installed" >&2
     exit 1
 fi
 
