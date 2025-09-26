@@ -20,7 +20,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  -v, --version  Show version information"
     echo ""
     echo "This tool creates secure tunnels to AWS services (DocumentDB, RDS, ElastiCache)"
-    echo "through Kubernetes pods, making them accessible on your local machine."
+    echo "and custom endpoints through Kubernetes pods, making them accessible locally."
     exit 0
 fi
 
@@ -38,6 +38,9 @@ fi
 if ! verify_kubectl_context; then
     exit 1
 fi
+
+# Check recommended dependencies
+check_recommended_dependencies fzf
 
 # Simplified sanitization - just replace problematic characters
 sanitize_name() {
@@ -71,14 +74,40 @@ echo "AWS Identity: ${RAW_USER}"
 echo ""
 
 # Service selection
-echo "Select service to tunnel to:"
-echo "1) DocumentDB (MongoDB)"
-echo "2) RDS PostgreSQL"
-echo "3) RDS MySQL"
-echo "4) ElastiCache Redis"
-echo "5) ElastiCache Valkey"
-echo ""
-read -p "Select service number: " SERVICE_SELECTION
+if command -v fzf >/dev/null 2>&1; then
+    # Use fzf for service selection
+    SERVICE_OPTIONS=(
+        "1) DocumentDB (MongoDB)"
+        "2) RDS PostgreSQL"
+        "3) RDS MySQL"
+        "4) ElastiCache Redis"
+        "5) ElastiCache Valkey"
+        "6) Custom (specify your own host/port)"
+    )
+    
+    echo "Select service to tunnel to:"
+    SELECTED_SERVICE=$(printf "%s\n" "${SERVICE_OPTIONS[@]}" | fzf --height=40% --layout=reverse --border --prompt="Select service: ")
+    
+    if [ -z "$SELECTED_SERVICE" ]; then
+        print_error "No service selected"
+        exit 1
+    fi
+    
+    SERVICE_SELECTION=$(echo "$SELECTED_SERVICE" | cut -d')' -f1)
+else
+    # Fallback to manual selection if fzf not installed
+    echo "Select service to tunnel to:"
+    echo "1) DocumentDB (MongoDB)"
+    echo "2) RDS PostgreSQL"
+    echo "3) RDS MySQL"
+    echo "4) ElastiCache Redis"
+    echo "5) ElastiCache Valkey"
+    echo "6) Custom (specify your own host/port)"
+    echo ""
+    print_info "Tip: Install 'fzf' for a better selection experience!"
+    echo ""
+    read -p "Select service number: " SERVICE_SELECTION
+fi
 
 case $SERVICE_SELECTION in
     1)
@@ -106,6 +135,35 @@ case $SERVICE_SELECTION in
         SERVICE_NAME="ElastiCache Valkey"
         DEFAULT_PORT=6379
         ;;
+    6)
+        SERVICE_TYPE="custom"
+        SERVICE_NAME="Custom Service"
+        echo ""
+        read -p "Enter hostname/endpoint: " CUSTOM_HOST
+        if [ -z "$CUSTOM_HOST" ]; then
+            print_error "Hostname cannot be empty"
+            exit 1
+        fi
+        
+        read -p "Enter port [default: 8080]: " CUSTOM_PORT
+        DEFAULT_PORT=${CUSTOM_PORT:-8080}
+        
+        if ! [[ "$DEFAULT_PORT" =~ ^[0-9]+$ ]] || [ "$DEFAULT_PORT" -lt 1 ] || [ "$DEFAULT_PORT" -gt 65535 ]; then
+            print_error "Port must be a number between 1 and 65535"
+            exit 1
+        fi
+        
+        # Set the instance info for custom service
+        INSTANCE_ID="custom-$(echo "$CUSTOM_HOST" | tr '.' '-')"
+        INSTANCE_ENDPOINT="$CUSTOM_HOST"
+        SECRET_FILTER="custom"
+        
+        echo ""
+        echo "Custom service configured:"
+        echo "  Host: $CUSTOM_HOST"
+        echo "  Port: $DEFAULT_PORT"
+        echo ""
+        ;;
     *)
         echo "Invalid selection"
         exit 1
@@ -115,13 +173,18 @@ esac
 echo "Selected: $SERVICE_NAME"
 echo ""
 
-# Fetch instances based on service type
-echo "Fetching $SERVICE_NAME instances..."
+# Skip AWS instance fetching for custom services
+if [ "$SERVICE_TYPE" = "custom" ]; then
+    # Custom service already has INSTANCE_ID and INSTANCE_ENDPOINT set
+    echo "Using custom endpoint: $INSTANCE_ENDPOINT:$DEFAULT_PORT"
+else
+    # Fetch instances based on service type
+    echo "Fetching $SERVICE_NAME instances..."
 
-# Store stderr to check for permission errors
-TEMP_ERROR=$(mktemp)
+    # Store stderr to check for permission errors
+    TEMP_ERROR=$(mktemp)
 
-case $SERVICE_TYPE in
+    case $SERVICE_TYPE in
     "documentdb")
         INSTANCES=$(aws docdb describe-db-clusters --query 'DBClusters[?Status==`available`].[DBClusterIdentifier,Endpoint]' --output text 2>"$TEMP_ERROR")
         AWS_EXIT_CODE=$?
@@ -149,59 +212,75 @@ case $SERVICE_TYPE in
         ;;
 esac
 
-# Check for errors
-if [ $AWS_EXIT_CODE -ne 0 ]; then
-    ERROR_MSG=$(cat "$TEMP_ERROR")
-    rm -f "$TEMP_ERROR"
-    
-    if echo "$ERROR_MSG" | grep -q "UnauthorizedException\|AccessDenied\|is not authorized to perform"; then
-        print_error "Insufficient AWS permissions to list $SERVICE_NAME instances."
-        print_info "Required permission: $(echo "$ERROR_MSG" | grep -o '[a-z]*:[A-Za-z]*' | head -1 || echo "Check AWS IAM permissions")"
-    else
-        print_error "Failed to fetch $SERVICE_NAME instances: ${ERROR_MSG}"
+    # Check for errors
+    if [ $AWS_EXIT_CODE -ne 0 ]; then
+        ERROR_MSG=$(cat "$TEMP_ERROR")
+        rm -f "$TEMP_ERROR"
+        
+        if echo "$ERROR_MSG" | grep -q "UnauthorizedException\|AccessDenied\|is not authorized to perform"; then
+            print_error "Insufficient AWS permissions to list $SERVICE_NAME instances."
+            print_info "Required permission: $(echo "$ERROR_MSG" | grep -o '[a-z]*:[A-Za-z]*' | head -1 || echo "Check AWS IAM permissions")"
+        else
+            print_error "Failed to fetch $SERVICE_NAME instances: ${ERROR_MSG}"
+        fi
+        exit 1
     fi
-    exit 1
+
+    rm -f "$TEMP_ERROR"
+
+    # Check if no instances found
+    if [ -z "$INSTANCES" ]; then
+        print_warning "No available $SERVICE_NAME instances found in this AWS account/region."
+        print_info "Make sure you:"
+        print_info "  - Are in the correct AWS region"
+        print_info "  - Have $SERVICE_NAME instances in 'available' state"
+        print_info "  - Have the correct AWS profile/credentials configured"
+        exit 1
+    fi
+
+    # Display instances for selection
+    echo "Available $SERVICE_NAME instances:"
+    
+    if command -v fzf >/dev/null 2>&1; then
+        # Use fzf for instance selection
+        SELECTED_LINE=$(echo "$INSTANCES" | fzf --height=40% --layout=reverse --border --prompt="Select instance: ")
+        
+        if [ -z "$SELECTED_LINE" ]; then
+            print_error "No instance selected"
+            exit 1
+        fi
+        
+        INSTANCE_ID=$(echo "$SELECTED_LINE" | awk '{print $1}')
+        INSTANCE_ENDPOINT=$(echo "$SELECTED_LINE" | awk '{print $2}')
+    else
+        # Fallback to manual selection
+        echo "$INSTANCES" | nl -w2 -s') '
+        
+        # Get user selection
+        echo ""
+        read -p "Select instance number: " SELECTION
+        
+        if ! [[ "$SELECTION" =~ ^[0-9]+$ ]]; then
+            echo "Error: Please enter a valid number"
+            exit 1
+        fi
+        
+        # Extract selected instance info
+        SELECTED_LINE=$(echo "$INSTANCES" | sed -n "${SELECTION}p")
+        if [ -z "$SELECTED_LINE" ]; then
+            echo "Error: Invalid selection"
+            exit 1
+        fi
+        
+        INSTANCE_ID=$(echo "$SELECTED_LINE" | awk '{print $1}')
+        INSTANCE_ENDPOINT=$(echo "$SELECTED_LINE" | awk '{print $2}')
+    fi
+
+    echo ""
+    echo "Selected instance: $INSTANCE_ID"
+    echo "Endpoint: $INSTANCE_ENDPOINT"
+    echo ""
 fi
-
-rm -f "$TEMP_ERROR"
-
-# Check if no instances found
-if [ -z "$INSTANCES" ]; then
-    print_warning "No available $SERVICE_NAME instances found in this AWS account/region."
-    print_info "Make sure you:"
-    print_info "  - Are in the correct AWS region"
-    print_info "  - Have $SERVICE_NAME instances in 'available' state"
-    print_info "  - Have the correct AWS profile/credentials configured"
-    exit 1
-fi
-
-# Display instances for selection
-echo "Available $SERVICE_NAME instances:"
-echo "$INSTANCES" | nl -w2 -s') '
-
-# Get user selection
-echo ""
-read -p "Select instance number: " SELECTION
-
-if ! [[ "$SELECTION" =~ ^[0-9]+$ ]]; then
-    echo "Error: Please enter a valid number"
-    exit 1
-fi
-
-# Extract selected instance info
-SELECTED_LINE=$(echo "$INSTANCES" | sed -n "${SELECTION}p")
-if [ -z "$SELECTED_LINE" ]; then
-    echo "Error: Invalid selection"
-    exit 1
-fi
-
-INSTANCE_ID=$(echo "$SELECTED_LINE" | awk '{print $1}')
-INSTANCE_ENDPOINT=$(echo "$SELECTED_LINE" | awk '{print $2}')
-
-echo ""
-echo "Selected instance: $INSTANCE_ID"
-echo "Endpoint: $INSTANCE_ENDPOINT"
-echo ""
 
 # Look for related secrets
 echo "Searching for secrets..."
@@ -367,6 +446,14 @@ if [ $? -eq 0 ]; then
                                 echo "Then run: AUTH \"\$(aws secretsmanager get-secret-value --secret-id '${SECRET_NAME}' --query SecretString --output text | jq -r '.password // .auth_token')\""
                             fi
                             ;;
+                        "custom")
+                            echo "# Connect to your custom service:"
+                            echo "# Host: localhost:${LOCAL_PORT} (tunneled from ${INSTANCE_ENDPOINT}:${DEFAULT_PORT})"
+                            if [ -n "$USERNAME" ] && [ -n "$PASSWORD" ]; then
+                                echo "# Username: ${USERNAME}"
+                                echo "# Password: \$(aws secretsmanager get-secret-value --secret-id '${SECRET_NAME}' --query SecretString --output text | jq -r '.password')"
+                            fi
+                            ;;
                     esac
                 else
                     show_manual_connection
@@ -393,14 +480,29 @@ if [ $? -eq 0 ]; then
         cleanup() {
             echo ""
             echo "Port forwarding stopped."
-            read -p "Delete tunnel pod ${POD_NAME}? (Y/n): " -n 1 -r
-            echo ""
-            if [[ $REPLY =~ ^[Nn]$ ]]; then
-                echo "Tunnel pod kept running"
-                echo "Delete later with: kubectl delete pod ${POD_NAME} -n tunnels"
+            
+            if command -v fzf >/dev/null 2>&1; then
+                # Use fzf for cleanup decision
+                CLEANUP_CHOICE=$(echo -e "Yes - Delete tunnel pod\nNo - Keep pod running" | fzf --height=20% --layout=reverse --border --prompt="Delete tunnel pod ${POD_NAME}? ")
+                
+                if [[ "$CLEANUP_CHOICE" == "Yes"* ]]; then
+                    kubectl delete pod ${POD_NAME} -n tunnels
+                    echo "Tunnel pod deleted"
+                else
+                    echo "Tunnel pod kept running"
+                    echo "Delete later with: kubectl delete pod ${POD_NAME} -n tunnels"
+                fi
             else
-                kubectl delete pod ${POD_NAME} -n tunnels
-                echo "Tunnel pod deleted"
+                # Fallback to manual prompt
+                read -p "Delete tunnel pod ${POD_NAME}? (Y/n): " -n 1 -r
+                echo ""
+                if [[ $REPLY =~ ^[Nn]$ ]]; then
+                    echo "Tunnel pod kept running"
+                    echo "Delete later with: kubectl delete pod ${POD_NAME} -n tunnels"
+                else
+                    kubectl delete pod ${POD_NAME} -n tunnels
+                    echo "Tunnel pod deleted"
+                fi
             fi
         }
         
@@ -435,6 +537,12 @@ show_manual_connection() {
         "elasticache-redis"|"elasticache-valkey")
             echo "redis-cli -h localhost -p ${LOCAL_PORT}"
             echo "Then run: AUTH <password>  # if authentication is enabled"
+            ;;
+        "custom")
+            echo "# Custom service connection:"
+            echo "# Connect to: localhost:${LOCAL_PORT}"
+            echo "# This tunnels to: ${INSTANCE_ENDPOINT}:${DEFAULT_PORT}"
+            echo "# Use your application-specific client to connect"
             ;;
     esac
 }

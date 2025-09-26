@@ -68,7 +68,7 @@ install_tool() {
         tunnel)
             print_info "Installing tamedia-tunnel..."
             sudo install -m 755 "${source_dir}/tools/tunnel/tunnel.sh" "${INSTALL_DIR}/tamedia-tunnel"
-            
+
             # Install completions if directories exist
             if [ -d "${COMPLETION_DIR_BASH}" ] && [ -f "${source_dir}/completion/tamedia-tunnel.bash" ]; then
                 sudo install -m 644 "${source_dir}/completion/tamedia-tunnel.bash" "${COMPLETION_DIR_BASH}/"
@@ -76,6 +76,10 @@ install_tool() {
             if [ -d "${COMPLETION_DIR_ZSH}" ] && [ -f "${source_dir}/completion/_tamedia-tunnel" ]; then
                 sudo install -m 644 "${source_dir}/completion/_tamedia-tunnel" "${COMPLETION_DIR_ZSH}/"
             fi
+            ;;
+        aws-cli)
+            print_info "Installing AWS CLI integration tools..."
+            sudo install -m 755 "${source_dir}/tools/aws-cli/aws-eks-config.sh" "${INSTALL_DIR}/tamedia-aws-eks-config"
             ;;
         common)
             print_info "Installing common utilities..."
@@ -127,7 +131,7 @@ main() {
     local tools_to_install=()
     if [ $# -eq 0 ]; then
         # Install all tools by default
-        tools_to_install=(common tunnel)
+        tools_to_install=(common tunnel aws-cli)
     else
         # Install specified tools
         tools_to_install=(common "$@")

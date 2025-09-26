@@ -37,10 +37,11 @@ sudo install -m 755 scripts/common.sh /usr/local/bin/tamedia-common
 ## 🛠️ Features
 
 ### `tamedia-tunnel`
-Secure tunneling to AWS services through Kubernetes:
+Secure tunneling to AWS services and custom endpoints through Kubernetes:
 - **DocumentDB** (MongoDB)
 - **RDS** (PostgreSQL, MySQL)
 - **ElastiCache** (Redis, Valkey)
+- **Custom services** (specify your own host/port)
 - Automatic secret integration
 - Smart port management
 
@@ -48,6 +49,23 @@ Secure tunneling to AWS services through Kubernetes:
 tamedia-tunnel
 # Interactive service and instance selection
 # Automatic credentials from AWS Secrets Manager
+```
+
+### `tamedia-aws-eks-config`
+Interactive EKS cluster configuration with AWS CLI integration:
+- **Interactive cluster selection** with fzf support
+- **AWS CLI aliases** for seamless integration (`aws eks-config`, `aws eks-list`)
+- **Smart region detection** and context management
+- **Automatic kubectl configuration** with cluster aliases
+
+```bash
+# Setup AWS CLI aliases (one-time)
+tamedia-aws-eks-config --setup-aliases
+
+# Then use anywhere:
+aws eks-config              # Interactive cluster selection
+aws eks-list               # List clusters with status
+aws eks-describe CLUSTER   # Detailed cluster info
 ```
 
 
@@ -62,12 +80,13 @@ tamedia-tunnel
 - **Consistent AWS identity detection** - Automatically detects your AWS session
 - **Kubernetes-safe naming conventions** - Generates valid pod names from AWS identities
 - **Secure credential handling** - Integrates with AWS Secrets Manager
-- **Interactive selection menus** - Easy service and instance selection with fzf support
+- **Interactive selection menus** - All prompts use fzf when available for better UX
 - **Automatic cleanup mechanisms** - Prompts to clean up resources on exit
 
 ## 📖 Documentation
 
 - [Tunnel Tool Guide](tools/tunnel/README.md)
+- [AWS CLI Integration Guide](tools/aws-cli/README.md)
 
 ## 🤝 Contributing
 

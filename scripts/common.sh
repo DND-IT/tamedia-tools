@@ -52,6 +52,23 @@ check_dependencies() {
     return 0
 }
 
+# Check recommended dependencies
+check_recommended_dependencies() {
+    local deps=("$@")
+    local missing=()
+    
+    for dep in "${deps[@]}"; do
+        if ! command_exists "$dep"; then
+            missing+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing[@]} -gt 0 ]; then
+        print_warning "Missing recommended dependencies: ${missing[*]}"
+        print_info "Install them for a better experience: brew install ${missing[*]}"
+    fi
+}
+
 # Verify AWS authentication
 verify_aws_auth() {
     if ! aws sts get-caller-identity >/dev/null 2>&1; then
