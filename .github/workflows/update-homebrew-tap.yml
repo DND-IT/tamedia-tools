@@ -44,13 +44,16 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           BRANCH_NAME="update-${VERSION}"
 
-          # Clone the homebrew tap repo
-          git clone https://github.com/dnd-it/homebrew-tamedia-tools.git homebrew-tap
+          # Clone the homebrew tap repo with token authentication
+          git clone https://x-access-token:${{ secrets.PULL_REQUEST_ACTION }}@github.com/dnd-it/homebrew-tamedia-tools.git homebrew-tap
           cd homebrew-tap
 
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Set the remote URL with token for pushing
+          git remote set-url origin https://x-access-token:${{ secrets.PULL_REQUEST_ACTION }}@github.com/dnd-it/homebrew-tamedia-tools.git
 
           # Create branch
           git checkout -b "$BRANCH_NAME"
