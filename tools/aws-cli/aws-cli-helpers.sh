@@ -60,28 +60,30 @@ setup_aws_aliases() {
 
     # Create AWS CLI config directory if it doesn't exist
     local aws_config_dir="$HOME/.aws"
-    local cli_config_file="$aws_config_dir/cli"
+    local cli_dir="$aws_config_dir/cli"
+    local cli_config_file="$cli_dir/alias"
 
-    mkdir -p "$aws_config_dir"
+    mkdir -p "$cli_dir"
 
-    # Check if cli config file exists, create if not
+    # Handle different alias file configurations
     if [[ ! -f "$cli_config_file" ]]; then
         cat > "$cli_config_file" << 'EOF'
-[aliases]
+[toplevel]
+
 EOF
-        print_info "Created AWS CLI configuration file: $cli_config_file"
+        print_info "Created AWS CLI alias configuration file: $cli_config_file"
     fi
 
     # Backup existing cli file
     cp "$cli_config_file" "$cli_config_file.backup.$(date +%Y%m%d_%H%M%S)"
     print_info "Backed up existing CLI config to: $cli_config_file.backup.*"
 
-    # Read existing content and remove old EKS aliases if they exist
+    # Read existing content and remove old tamedia-tools aliases if they exist
     local temp_file
     temp_file=$(mktemp)
 
-    # Remove existing tamedia-tools EKS aliases
-    grep -v "# tamedia-tools EKS alias" "$cli_config_file" > "$temp_file" || true
+    # Remove existing tamedia-tools aliases (both old EKS and new ones)
+    grep -v "# tamedia-tools.*alias" "$cli_config_file" > "$temp_file" || true
 
     # Add our aliases
     cat >> "$temp_file" << 'EOF'

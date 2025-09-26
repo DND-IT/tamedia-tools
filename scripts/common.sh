@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Common functions and variables for tamedia-tools
-TAMEDIA_TOOLS_VERSION="1.2.1"
+TAMEDIA_TOOLS_VERSION="1.2.2"
 
 # Colors for output
 RED='\033[0;31m'
