@@ -59,16 +59,16 @@ tamedia-tunnel
 # Automatic credentials from AWS Secrets Manager
 ```
 
-### `tamedia-aws-eks-config`
-Interactive EKS cluster configuration with AWS CLI integration:
-- **Interactive cluster selection** with fzf support
+### `tamedia-aws-cli-helpers`
+Interactive AWS CLI helper tools with enhanced integrations:
+- **Interactive EKS cluster selection** with fzf support
 - **AWS CLI aliases** for seamless integration (`aws eks-config`, `aws eks-list`)
 - **Smart region detection** and context management
 - **Automatic kubectl configuration** with cluster aliases
 
 ```bash
 # Setup AWS CLI aliases (one-time)
-tamedia-aws-eks-config --setup-aliases
+tamedia-aws-cli-helpers --setup-aliases
 
 # Then use anywhere:
 aws eks-config              # Interactive cluster selection

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# AWS EKS Configuration Tool
-# Sets up AWS CLI aliases and provides interactive cluster selection
+# AWS CLI Helpers
+# Sets up AWS CLI aliases and provides interactive AWS service management
 
 set -euo pipefail
 
@@ -21,7 +21,7 @@ show_usage() {
     cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-AWS EKS Configuration Tool - Interactive cluster selection using AWS CLI aliases
+AWS CLI Helpers - Interactive AWS service management using AWS CLI aliases
 
 OPTIONS:
     --setup-aliases        Set up AWS CLI aliases for EKS operations

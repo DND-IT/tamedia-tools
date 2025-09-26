@@ -78,8 +78,8 @@ install_tool() {
             fi
             ;;
         aws-cli)
-            print_info "Installing AWS CLI integration tools..."
-            sudo install -m 755 "${source_dir}/tools/aws-cli/aws-eks-config.sh" "${INSTALL_DIR}/tamedia-aws-eks-config"
+            print_info "Installing AWS CLI helper tools..."
+            sudo install -m 755 "${source_dir}/tools/aws-cli/aws-cli-helpers.sh" "${INSTALL_DIR}/tamedia-aws-cli-helpers"
             ;;
         common)
             print_info "Installing common utilities..."

@@ -1,4 +1,4 @@
-# AWS CLI Integration Tools
+# AWS CLI Helper Tools
 
 Collection of scripts that enhance the AWS CLI experience with interactive selections and common workflow automation.
 
@@ -9,7 +9,7 @@ Collection of scripts that enhance the AWS CLI experience with interactive selec
 First, set up the AWS CLI aliases to get the most streamlined experience:
 
 ```bash
-./aws-eks-config.sh --setup-aliases
+./aws-cli-helpers.sh --setup-aliases
 ```
 
 This creates convenient AWS CLI aliases that you can use anywhere:
@@ -36,9 +36,9 @@ aws eks-describe my-production-cluster
 
 ## 🛠️ Available Tools
 
-### `aws-eks-config.sh`
+### `aws-cli-helpers.sh`
 
-Interactive EKS cluster configuration tool that:
+Interactive AWS CLI helper tool that:
 
 - Lists available EKS clusters in your specified or default region
 - Provides fzf-powered selection (falls back to numbered menu)
@@ -55,10 +55,10 @@ Interactive EKS cluster configuration tool that:
 
 **Options:**
 ```bash
-./aws-eks-config.sh [OPTIONS]
+./aws-cli-helpers.sh [OPTIONS]
 
 OPTIONS:
-    --setup-aliases        Set up AWS CLI aliases for EKS operations
+    --setup-aliases        Set up AWS CLI aliases for AWS operations
     -r, --region REGION    AWS region to search for clusters
     -h, --help            Show help message
     -v, --version         Show version information
@@ -119,19 +119,19 @@ aws eks-describe CLUSTER_NAME [region]
 ### Option 1: Use existing tamedia-tools installation
 If you have tamedia-tools installed, the scripts are already available:
 ```bash
-/usr/local/bin/tamedia-aws-eks-config --setup-aliases
+/usr/local/bin/tamedia-aws-cli-helpers --setup-aliases
 ```
 
 ### Option 2: Direct usage from repository
 ```bash
 # Make executable
-chmod +x tools/aws-cli/aws-eks-config.sh
+chmod +x tools/aws-cli/aws-cli-helpers.sh
 
 # Setup aliases
-./tools/aws-cli/aws-eks-config.sh --setup-aliases
+./tools/aws-cli/aws-cli-helpers.sh --setup-aliases
 
 # Use directly
-./tools/aws-cli/aws-eks-config.sh
+./tools/aws-cli/aws-cli-helpers.sh
 ```
 
 ## 💡 Usage Patterns
